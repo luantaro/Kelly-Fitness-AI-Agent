@@ -4,19 +4,17 @@ import { useState } from "react";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithPopup,
   GoogleAuthProvider,
-  signInAnonymously,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   EyeIcon,
   EyeSlashIcon,
-  UserIcon,
   EnvelopeIcon,
   LockClosedIcon,
-  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 interface AuthFormProps {
@@ -28,36 +26,22 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
   const [isLogin, setIsLogin] = useState(mode === "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleToggleMode = () => {
     setIsLogin(!isLogin);
+    setError("");
+    setSuccess("");
+    setConfirmPassword("");
     if (onToggleMode) {
       onToggleMode();
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Đã xảy ra lỗi không xác định");
-      }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -67,10 +51,60 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
 
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      // Add additional scopes if needed
+      provider.addScope("email");
+      provider.addScope("profile");
+
+      // Use popup method with error handling
+      const result = await signInWithPopup(auth, provider);
+      console.log("Google sign-in successful:", result.user);
+    } catch (error: unknown) {
+      console.error("Google sign-in error:", error);
+
+      if (error instanceof Error) {
+        // Handle specific Firebase Auth errors
+        if (error.message.includes("popup-closed-by-user")) {
+          setError("Đăng nhập bị hủy. Vui lòng thử lại.");
+        } else if (error.message.includes("popup-blocked")) {
+          setError("Popup bị chặn. Vui lòng cho phép popup và thử lại.");
+        } else if (error.message.includes("network-request-failed")) {
+          setError("Lỗi kết nối mạng. Vui lòng kiểm tra internet và thử lại.");
+        } else if (error.message.includes("internal-error")) {
+          setError("Lỗi hệ thống Firebase. Vui lòng thử lại sau.");
+        } else {
+          setError("Lỗi đăng nhập Google: " + error.message);
+        }
+      } else {
+        setError("Đã xảy ra lỗi không xác định khi đăng nhập Google");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      setError("Vui lòng nhập email");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setSuccess(
+        "Đã gửi email reset mật khẩu. Vui lòng kiểm tra hộp thư của bạn."
+      );
+      setShowResetModal(false);
+      setResetEmail("");
     } catch (error: unknown) {
       if (error instanceof Error) {
-        setError(error.message);
+        if (error.message.includes("user-not-found")) {
+          setError("Email không tồn tại trong hệ thống");
+        } else {
+          setError("Lỗi gửi email reset: " + error.message);
+        }
       } else {
         setError("Đã xảy ra lỗi không xác định");
       }
@@ -79,43 +113,60 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
     }
   };
 
-  const handleQuickLogin = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
 
-    try {
-      // Quick login with demo account
-      await signInWithEmailAndPassword(auth, "demo@fitchat.ai", "demo123456");
-    } catch (error) {
-      // If demo account doesn't exist, create it
-      try {
-        await createUserWithEmailAndPassword(
-          auth,
-          "demo@fitchat.ai",
-          "demo123456"
-        );
-      } catch (createError: unknown) {
-        console.error("Demo account creation error:", createError);
-        if (createError instanceof Error) {
-          setError("Không thể tạo tài khoản demo: " + createError.message);
-        } else {
-          setError("Không thể tạo tài khoản demo");
-        }
-      }
-    } finally {
+    // Validate confirm password for signup
+    if (!isLogin && password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp");
       setLoading(false);
+      return;
     }
-  };
-
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    setError("");
 
     try {
-      await signInAnonymously(auth);
+      if (isLogin) {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const result = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+      }
+
+      // Clear form
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
     } catch (error: unknown) {
       if (error instanceof Error) {
-        setError(error.message);
+        // Handle specific Firebase error codes
+        if (error.message.includes("operation-not-allowed")) {
+          setError(
+            "Email/Password authentication chưa được kích hoạt. Vui lòng liên hệ admin hoặc sử dụng Google Sign-in."
+          );
+        } else if (error.message.includes("user-not-found")) {
+          setError(
+            "Email này chưa được đăng ký. Vui lòng đăng ký tài khoản mới."
+          );
+        } else if (error.message.includes("wrong-password")) {
+          setError("Mật khẩu không đúng. Vui lòng thử lại.");
+        } else if (error.message.includes("email-already-in-use")) {
+          setError(
+            "Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác."
+          );
+        } else if (error.message.includes("weak-password")) {
+          setError(
+            "Mật khẩu quá yếu. Vui lòng sử dụng mật khẩu ít nhất 6 ký tự."
+          );
+        } else if (error.message.includes("invalid-email")) {
+          setError("Email không hợp lệ. Vui lòng kiểm tra lại.");
+        } else {
+          setError("Lỗi: " + error.message);
+        }
       } else {
         setError("Đã xảy ra lỗi không xác định");
       }
@@ -179,43 +230,6 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
             </motion.p>
           </div>
 
-          {/* Quick Access Buttons */}
-          <div className="space-y-3 mb-6">
-            <motion.button
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-              onClick={handleQuickLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 text-white font-medium hover:from-emerald-500 hover:to-emerald-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <SparklesIcon className="w-5 h-5 mr-2" />
-              🚀 Đăng nhập nhanh (Demo)
-            </motion.button>
-
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
-              onClick={handleGuestLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-gradient-to-r from-purple-400 to-purple-500 text-white font-medium hover:from-purple-500 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <UserIcon className="w-5 h-5 mr-2" />
-              👤 Dùng thử như khách
-            </motion.button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">hoặc</span>
-            </div>
-          </div>
-
           {/* Error Message */}
           <AnimatePresence>
             {error && (
@@ -225,7 +239,31 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
               >
-                <p className="text-red-600 text-sm">{error}</p>
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-red-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-800">{error}</p>
+                    {error.includes("operation-not-allowed") && (
+                      <div className="mt-2 text-xs text-red-600">
+                        <p className="font-medium">💡 Giải pháp:</p>
+                        <p>• Thử đăng nhập bằng Google (nút bên dưới)</p>
+                        <p>• Hoặc liên hệ admin để kích hoạt Email/Password</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -235,7 +273,7 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
+              transition={{ delay: 0.5 }}
             >
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -246,7 +284,7 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pastel-lavender focus:border-transparent transition-all duration-200 bg-white/80"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pastel-lavender focus:border-transparent transition-all duration-200 bg-white/80 text-gray-900 placeholder-gray-500"
                   placeholder="your@email.com"
                   required
                 />
@@ -256,7 +294,7 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
+              transition={{ delay: 0.6 }}
             >
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Mật khẩu
@@ -267,7 +305,7 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pastel-lavender focus:border-transparent transition-all duration-200 bg-white/80"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pastel-lavender focus:border-transparent transition-all duration-200 bg-white/80 text-gray-900 placeholder-gray-500"
                   placeholder="••••••••"
                   required
                 />
@@ -285,10 +323,94 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
               </div>
             </motion.div>
 
+            {/* Confirm Password Field - Only for signup */}
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.65 }}
+              >
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Xác nhận mật khẩu
+                </label>
+                <div className="relative">
+                  <LockClosedIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pastel-lavender focus:border-transparent transition-all duration-200 bg-white/80 text-gray-900 placeholder-gray-500"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeSlashIcon className="w-5 h-5" />
+                    ) : (
+                      <EyeIcon className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Forgot Password Link - Only for login */}
+            {isLogin && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.65 }}
+                className="text-right"
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Quên mật khẩu?
+                </button>
+              </motion.div>
+            )}
+
+            {/* Success Message */}
+            <AnimatePresence>
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-4 bg-green-50 border border-green-200 rounded-xl"
+                >
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="h-5 w-5 text-green-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-green-800">{success}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 }}
+              transition={{ delay: 0.7 }}
               type="submit"
               disabled={loading}
               className="w-full gradient-button py-3 px-4 rounded-xl text-gray-700 font-medium hover:shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
@@ -306,16 +428,29 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
             </motion.button>
           </form>
 
-          {/* Google Sign In */}
+          {/* Divider */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.75 }}
+            className="my-6 flex items-center"
+          >
+            <div className="flex-1 border-t border-gray-200"></div>
+            <div className="px-4 text-sm text-gray-500">Hoặc</div>
+            <div className="flex-1 border-t border-gray-200"></div>
+          </motion.div>
+
+          {/* Google Sign-in Button */}
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
+            transition={{ delay: 0.8 }}
+            type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="mt-4 w-full flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-white/80"
+            className="w-full flex items-center justify-center py-3 px-4 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-white"
           >
-            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -333,14 +468,16 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Tiếp tục với Google
+            {loading
+              ? "Đang xử lý..."
+              : `Đăng ${isLogin ? "nhập" : "ký"} bằng Google`}
           </motion.button>
 
           {/* Toggle Login/Register */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
+            transition={{ delay: 0.8 }}
             className="mt-6 text-center"
           >
             <button
@@ -367,6 +504,75 @@ const AuthForm = ({ mode, onToggleMode }: AuthFormProps) => {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* Reset Password Modal */}
+      <AnimatePresence>
+        {showResetModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowResetModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                  <LockClosedIcon className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Quên mật khẩu?
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Nhập email của bạn, chúng tôi sẽ gửi link reset mật khẩu
+                </p>
+              </div>
+
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <EnvelopeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? "Đang gửi..." : "Gửi email"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

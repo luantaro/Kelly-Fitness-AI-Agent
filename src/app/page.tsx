@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChatHistory } from "@/hooks/useChatHistory";
+import { useUserProfileSetup } from "@/hooks/useUserProfileSetup";
 
 // Components
 import Sidebar from "@/components/Sidebar";
 import ChatInterface from "@/components/ChatInterface";
-import PaymentPage from "@/components/PaymentPage";
 import AuthForm from "@/components/AuthForm";
 import FloatingShapes from "@/components/FloatingShapes";
+import AdminAccessButton from "@/components/AdminAccessButton";
+import TrialStatusBanner from "@/components/TrialBanner";
 
 interface LoadedMessage {
   id: string;
@@ -22,6 +24,23 @@ interface LoadedMessage {
 
 export default function HomePage() {
   const [user, loading] = useAuthState(auth);
+  const [forceShowContent, setForceShowContent] = useState(false);
+
+  // Force show content after 10 seconds if still loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn("Auth loading timeout - forcing content display");
+        setForceShowContent(true);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
+  // Setup user profile in Firestore when authenticated
+  useUserProfileSetup(user);
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentPage, setCurrentPage] = useState("chat");
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -32,18 +51,16 @@ export default function HomePage() {
   const { loadChat, saveChatWhenNeeded, startNewChat } = useChatHistory();
 
   // Show loading spinner while checking auth
-  if (loading) {
+  if (loading && !forceShowContent) {
     return (
-      <div className="min-h-screen animated-gradient flex items-center justify-center relative">
-        <FloatingShapes />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center z-10"
-        >
-          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg font-medium">Đang tải...</p>
-        </motion.div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg font-medium">Đang tải...</p>
+          <p className="text-gray-400 text-sm mt-2">
+            Đang kiểm tra đăng nhập...
+          </p>
+        </div>
       </div>
     );
   }
@@ -53,7 +70,7 @@ export default function HomePage() {
     return (
       <>
         <FloatingShapes />
-        <AuthForm />
+        <AuthForm mode="login" />
       </>
     );
   }
@@ -120,8 +137,10 @@ export default function HomePage() {
             onMessagesChange={handleMessagesChange}
           />
         );
-      case "payment":
-        return <PaymentPage />;
+      case "admin":
+        // Redirect to separate admin page to avoid sidebar overlap
+        window.location.href = "/admin";
+        return null;
       default:
         return (
           <ChatInterface
@@ -155,12 +174,14 @@ export default function HomePage() {
           sidebarOpen ? "ml-80" : "ml-16"
         }`}
       >
+        {/* Trial Status Banner */}
+        {user && <TrialStatusBanner />}
+
         {/* Mobile Header */}
         <div className="lg:hidden glass-card border-b border-gray-200/20 p-4 backdrop-blur-sm bg-white/80">
           <div className="flex items-center justify-center">
             <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {currentPage === "chat" && "🤖 AI Agent"}
-              {currentPage === "payment" && "💎 Pricing"}
+              🤖 AI Agent
             </h1>
           </div>
         </div>
@@ -181,6 +202,9 @@ export default function HomePage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Admin Access Button */}
+      <AdminAccessButton />
     </div>
   );
 }

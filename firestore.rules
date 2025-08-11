@@ -1,0 +1,109 @@
+// 🔒 Firestore Security Rules for Kelly Fitness AI
+// Chặt chẽ bảo mật, chỉ cho phép user access own data
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 👤 User profiles - chỉ user đó hoặc admin mới access được
+    match /users/{userId} {
+      allow read, write: if isAuthenticatedUser(userId) || isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // 💬 Chat sessions - chỉ owner hoặc admin
+    match /chatSessions/{sessionId} {
+      allow read, write: if isOwnerOrAdmin(resource.data.userId);
+      allow create: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // 📊 User analytics - chỉ admin
+    match /analytics/{document} {
+      allow read, write: if isAdmin();
+    }
+    
+    // 🔐 Admin logs - chỉ admin
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // 🔑 API keys - chỉ admin và server
+    match /apiKeys/{keyId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // 📈 Usage tracking - read only cho user, full access cho admin
+    match /usage/{userId} {
+      allow read: if isAuthenticatedUser(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // 💰 Subscriptions - read only cho user, full access cho admin
+    match /subscriptions/{userId} {
+      allow read: if isAuthenticatedUser(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // 🍽️ Meal plans - chỉ owner hoặc admin
+    match /mealPlans/{planId} {
+      allow read, write: if isOwnerOrAdmin(resource.data.userId);
+      allow create: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // 🏃‍♂️ Workout plans - chỉ owner hoặc admin
+    match /workoutPlans/{planId} {
+      allow read, write: if isOwnerOrAdmin(resource.data.userId);
+      allow create: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // 📝 User preferences - chỉ owner hoặc admin
+    match /userPreferences/{userId} {
+      allow read, write: if isAuthenticatedUser(userId) || isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// 🔧 Helper functions
+function isAuthenticated() {
+  return request.auth != null;
+}
+
+function isAuthenticatedUser(userId) {
+  return isAuthenticated() && request.auth.uid == userId;
+}
+
+function isAdmin() {
+  return isAuthenticated() && 
+         request.auth.token.admin == true;
+}
+
+function isOwnerOrAdmin(resourceUserId) {
+  return isAuthenticated() && 
+         (request.auth.uid == resourceUserId || 
+          request.auth.token.admin == true);
+}
+
+function isActiveUser() {
+  return isAuthenticated() && 
+         request.auth.token.isActive == true;
+}
+
+// Validate user data structure
+function isValidUserData() {
+  return request.resource.data.keys().hasAll(['email', 'createdAt']) &&
+         request.resource.data.email is string &&
+         request.resource.data.createdAt is timestamp;
+}
+
+// Validate subscription data
+function isValidSubscriptionData() {
+  return request.resource.data.keys().hasAll(['userId', 'status', 'startDate']) &&
+         request.resource.data.status in ['free', 'pro', 'trial'] &&
+         request.resource.data.userId is string;
+}

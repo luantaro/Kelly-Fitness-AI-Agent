@@ -46,6 +46,11 @@ const config: Config = {
         "slide-in": "slideIn 0.3s ease-out",
         "pulse-gentle": "pulseGentle 2s infinite",
       },
+      scrollbar: {
+        thin: "thin",
+        DEFAULT: "auto",
+        none: "none",
+      },
       keyframes: {
         fadeIn: {
           "0%": { opacity: "0" },

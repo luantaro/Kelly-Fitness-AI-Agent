@@ -1,0 +1,12 @@
+{
+  "emergency_admin_setup": {
+    "timestamp": "2025-08-11",
+    "admin_emails": [
+      "admin@kelly-fitness.com",
+      "taro2255@gmail.com",
+      "admin@kellyfitness.com"
+    ],
+    "instructions": "These emails have emergency admin access. No token verification required.",
+    "deployment_notes": "Fixed user data sync issues, cleaned UI, emergency admin fallback enabled"
+  }
+}

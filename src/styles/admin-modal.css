@@ -1,0 +1,40 @@
+/* Admin Modal Force Black Text */
+.admin-modal-override input,
+.admin-modal-override select,
+.admin-modal-override option,
+.admin-modal-override textarea {
+  color: #000000 !important;
+  font-weight: 700 !important;
+  -webkit-text-fill-color: #000000 !important;
+  text-shadow: none !important;
+}
+
+.admin-modal-override input:focus,
+.admin-modal-override select:focus {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+.admin-modal-override input::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.8 !important;
+}
+
+.admin-modal-override input[type="text"],
+.admin-modal-override input[type="number"] {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #000000 !important;
+  font-weight: 700 !important;
+  border: 2px solid #6b7280 !important;
+}
+
+/* Override any parent styles */
+.admin-modal-override * {
+  color: inherit !important;
+}
+
+.admin-modal-override input,
+.admin-modal-override select {
+  color: #000000 !important;
+}

@@ -1,0 +1,129 @@
+# Page snapshot
+
+```yaml
+- alert
+- heading "AI Agent" [level=1]
+- paragraph: Health Assistant
+- button "Thu gọn sidebar"
+- button "✨ Cuộc trò chuyện mới"
+- navigation:
+  - button "🤖 AI Agent"
+- heading "� Lịch sử trò chuyện" [level=3]
+- button "Xóa tất cả"
+- paragraph: 🌟 Chưa có cuộc trò chuyện nào
+- paragraph: Bắt đầu trò chuyện đầu tiên của bạn!
+- paragraph: Free Test User 1
+- paragraph: freetestuser1@kelly-fitness.com
+- text: "0"
+- button "Cài đặt"
+- button "Thoát"
+- heading "⚙️ Tuỳ chỉnh AI" [level=2]
+- button
+- heading "👤 Thông tin cá nhân" [level=3]
+- text: Tên của bạn
+- textbox "Nhập tên của bạn"
+- text: Tuổi
+- spinbutton
+- text: Giới tính
+- radio "👨 Nam"
+- text: 👨 Nam
+- radio "👩 Nữ"
+- text: 👩 Nữ 📏 Chiều cao (cm)
+- spinbutton
+- text: Cân nặng (kg)
+- spinbutton
+- text: 🏃 Mức độ hoạt động
+- combobox:
+  - option "🛋️ Ít vận động (làm việc văn phòng)"
+  - option "🚶 Nhẹ (tập 1-3 ngày/tuần)"
+  - option "🏃 Vừa phải (tập 3-5 ngày/tuần)" [selected]
+  - option "💪 Tích cực (tập 6-7 ngày/tuần)"
+  - option "🔥 Rất tích cực (tập 2 lần/ngày)"
+- text: 🎯 Mục tiêu
+- combobox:
+  - option "📉 Giảm cân - giảm mỡ"
+  - option "💪 Tăng cân - tăng cơ"
+  - option "⚖️ Duy trì vóc dáng" [selected]
+- text: "0"
+- heading "Thông tin tài khoản" [level=4]
+- button "🔄 Làm mới"
+- text: "Gói tài khoản: Trạng thái: ❌ Không hoạt động"
+- paragraph
+- heading "🤖 Cá tính AI" [level=3]
+- paragraph: "Chọn cách bạn muốn Kelly Fitness - AI Agent tương tác với bạn:"
+- text: 😊
+- heading "Thân thiện" [level=4]
+- paragraph: Ấm áp, gần gũi và dễ tiếp cận
+- text: 🔥
+- heading "Nhiệt tình" [level=4]
+- paragraph: Tràn đầy năng lượng và động lực
+- text: 💼
+- heading "Chuyên nghiệp" [level=4]
+- paragraph: Nghiêm túc, tập trung vào kết quả
+- text: 💪
+- heading "Truyền cảm hứng" [level=4]
+- paragraph: Luôn khuyến khích và động viên
+- text: 🌸
+- heading "Nhẹ nhàng" [level=4]
+- paragraph: Kiên nhẫn, thấu hiểu và hỗ trợ
+- text: 🧬
+- heading "Khoa học" [level=4]
+- paragraph: Tập trung vào dữ liệu và nghiên cứu
+- button "Hủy"
+- button "💾 Lưu cài đặt"
+- paragraph:
+  - text: 👋
+  - strong: Xin chào! Tôi là Kelly - AI Agent
+  - text: "- trợ lý thông minh chuyên về sức khỏe và dinh dưỡng! 🤖✨"
+- paragraph:
+  - text: 🎯
+  - strong: "Tôi có thể giúp bạn:"
+- paragraph:
+  - text: 🥗
+  - strong: Tư vấn dinh dưỡng chuyên nghiệp
+- list:
+  - listitem: Lập thực đơn cá nhân hóa 7 ngày
+  - listitem: Tính toán macro và calories chính xác
+  - listitem: Tư vấn chế độ ăn theo mục tiêu
+- paragraph:
+  - text: 📊
+  - strong: Phân tích thể trạng thông minh
+- list:
+  - listitem: Tính BMR/TDEE tự động
+  - listitem: Đưa ra lời khuyên dựa trên thông tin cá nhân
+  - listitem: Theo dõi tiến độ phát triển
+- paragraph:
+  - text: 💡
+  - strong: Tư vấn lối sống lành mạnh
+- list:
+  - listitem: Hướng dẫn thói quen ăn uống khoa học
+  - listitem: Gợi ý thực phẩm và bổ sung dinh dưỡng
+  - listitem: Random topics dinh dưỡng thú vị
+- paragraph:
+  - text: 🎭
+  - strong: 6 cá tính AI đa dạng
+- list:
+  - listitem: Thân thiện, Nhiệt tình, Chuyên nghiệp
+  - listitem: Truyền cảm hứng, Nhẹ nhàng, Khoa học
+- paragraph:
+  - text: 📱
+  - strong: Tính năng tiện ích
+- list:
+  - listitem: Xuất thực đơn PDF chuyên nghiệp
+  - listitem: Lưu lịch sử trò chuyện tự động
+  - listitem: Giao diện thân thiện, dễ sử dụng
+- separator
+- paragraph:
+  - text: 🚀
+  - strong: "Bắt đầu ngay:"
+  - text: Vào
+  - strong: ⚙️ Cài đặt
+  - text: để cập nhật thông tin cá nhân, chọn cá tính AI yêu thích, sau đó click vào gợi ý bên dưới để nhận tư vấn tức thì!
+- text: 12:45 🔒
+- heading "Quyền Truy Cập Bị Hạn Chế" [level=3]
+- paragraph: ❌ Tài khoản chưa được kích hoạt. Vui lòng chờ Kelly kích hoạt.
+- paragraph:
+  - text: 💝
+  - strong: Không lo lắng!
+  - text: Kelly sẽ kích hoạt tài khoản của bạn trong thời gian sớm nhất. Vui lòng kiên nhẫn chờ đợi thông báo qua email hoặc kiểm tra lại sau.
+```

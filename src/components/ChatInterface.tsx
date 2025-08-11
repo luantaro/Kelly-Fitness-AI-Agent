@@ -8,11 +8,18 @@ import {
   HeartIcon,
   FireIcon,
   LightBulbIcon,
+  WrenchScrewdriverIcon,
+  ChevronDownIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import PDFExporter from "./PDFExporter";
+import DocumentExporter from "./DocumentExporter";
 import { useChatHistory } from "@/hooks/useChatHistory";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
 
 interface Message {
   id: string;
@@ -28,38 +35,86 @@ interface ChatInterfaceProps {
   onMessagesChange?: (messages: Message[]) => void;
 }
 
+// Move default message outside component to prevent recreation
+const DEFAULT_MESSAGE: Message = {
+  id: "1",
+  text: "👋 **Xin chào! Tôi là Kelly - AI Agent** - trợ lý thông minh chuyên về sức khỏe và dinh dưỡng! 🤖✨\n\n🎯 **Tôi có thể giúp bạn:**\n\n🥗 **Tư vấn dinh dưỡng chuyên nghiệp**\n- Lập thực đơn cá nhân hóa 7 ngày\n- Tính toán macro và calories chính xác\n- Tư vấn chế độ ăn theo mục tiêu\n\n📊 **Phân tích thể trạng thông minh**\n- Tính BMR/TDEE tự động\n- Đưa ra lời khuyên dựa trên thông tin cá nhân\n- Theo dõi tiến độ phát triển\n\n💡 **Tư vấn lối sống lành mạnh**\n- Hướng dẫn thói quen ăn uống khoa học\n- Gợi ý thực phẩm và bổ sung dinh dưỡng\n- Random topics dinh dưỡng thú vị\n\n🎭 **6 cá tính AI đa dạng**\n- Thân thiện, Nhiệt tình, Chuyên nghiệp\n- Truyền cảm hứng, Nhẹ nhàng, Khoa học\n\n📱 **Tính năng tiện ích**\n- Xuất thực đơn PDF chuyên nghiệp\n- Lưu lịch sử trò chuyện tự động\n- Giao diện thân thiện, dễ sử dụng\n\n---\n\n🚀 **Bắt đầu ngay:** Vào **⚙️ Cài đặt** để cập nhật thông tin cá nhân, chọn cá tính AI yêu thích, sau đó click vào gợi ý bên dưới để nhận tư vấn tức thì!",
+  isUser: false,
+  timestamp: new Date(),
+};
+
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   currentChatId,
   loadedMessages,
   onMessagesChange,
 }) => {
+  const [user] = useAuthState(auth);
   const chatHistory = useChatHistory();
+  const { profile: userProfile } = useUserProfile();
+  const { trialStatus, hasAccess, isLoading } = useTrialStatus();
   const {
     saveChatWhenNeeded = () => {},
     updateCurrentChat = () => {},
+    setRealInteraction,
     sessionId,
   } = chatHistory || {};
 
-  const defaultMessage: Message = {
-    id: "1",
-    text: "👋 **Xin chào! Tôi là AI Agent** - trợ lý thông minh chuyên về sức khỏe và dinh dưỡng! 🤖✨\n\n🎯 **Tôi có thể giúp bạn:**\n\n🥗 **Tư vấn dinh dưỡng chuyên nghiệp**\n- Lập thực đơn cá nhân hóa 7 ngày\n- Tính toán macro và calories chính xác\n- Tư vấn chế độ ăn theo mục tiêu\n\n📊 **Phân tích thể trạng thông minh**\n- Tính BMR/TDEE tự động\n- Đưa ra lời khuyên dựa trên thông tin cá nhân\n- Theo dõi tiến độ phát triển\n\n💡 **Tư vấn lối sống lành mạnh**\n- Hướng dẫn thói quen ăn uống khoa học\n- Gợi ý thực phẩm và bổ sung dinh dưỡng\n- Random topics dinh dưỡng thú vị\n\n🎭 **6 cá tính AI đa dạng**\n- Thân thiện, Nhiệt tình, Chuyên nghiệp\n- Truyền cảm hứng, Nhẹ nhàng, Khoa học\n\n📱 **Tính năng tiện ích**\n- Xuất thực đơn PDF chuyên nghiệp\n- Lưu lịch sử trò chuyện tự động\n- Giao diện thân thiện, dễ sử dụng\n\n---\n\n🚀 **Bắt đầu ngay:** Vào **⚙️ Cài đặt** để cập nhật thông tin cá nhân, chọn cá tính AI yêu thích, sau đó click vào gợi ý bên dưới để nhận tư vấn tức thì!\n\n💫 **Tôi đã nhớ tất cả thông tin của bạn** - không cần nhập lại!",
-    isUser: false,
-    timestamp: new Date(),
-  };
-
-  const [messages, setMessages] = useState<Message[]>([defaultMessage]);
+  const [messages, setMessages] = useState<Message[]>([DEFAULT_MESSAGE]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showToolsDropdown, setShowToolsDropdown] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const toolsDropdownRef = useRef<HTMLDivElement>(null);
 
   // Load messages khi có cuộc trò chuyện được chọn
   useEffect(() => {
     if (loadedMessages && loadedMessages.length > 0) {
       setMessages(loadedMessages);
     } else if (currentChatId === null) {
-      setMessages([defaultMessage]);
+      setMessages([DEFAULT_MESSAGE]);
     }
   }, [loadedMessages, currentChatId]);
+
+  // Check user profile status and add a helpful reminder
+  useEffect(() => {
+    // Only run once when component mounts and not loading existing chat
+    if (
+      currentChatId === null &&
+      messages.length === 1 &&
+      messages[0].id === DEFAULT_MESSAGE.id
+    ) {
+      const timer = setTimeout(() => {
+        try {
+          const saved = localStorage.getItem("fitchat_user_profile");
+          const userProfile = saved ? JSON.parse(saved) : null;
+
+          // Profile reminder removed - let chat start clean
+          // AI will ask for information naturally during conversation if needed
+        } catch (error) {
+          console.warn("Could not check user profile:", error);
+        }
+      }, 2000); // Delay 2 seconds for better UX
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentChatId, messages]);
+
+  // Close tools dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        toolsDropdownRef.current &&
+        !toolsDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowToolsDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Thông báo cho parent component khi messages thay đổi
   useEffect(() => {
@@ -82,7 +137,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const lastMessage = messages[messages.length - 1];
     const shouldProcess =
       messages.length >= 2 &&
-      lastMessage?.id !== defaultMessage.id &&
+      lastMessage?.id !== DEFAULT_MESSAGE.id &&
       !lastMessage?.isUser; // Chỉ save sau khi bot reply xong
 
     if (shouldProcess) {
@@ -234,8 +289,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async (text: string, specialRequest?: string) => {
+  const sendMessage = async (
+    text: string,
+    specialRequest?: string,
+    isQuickAction: boolean = false
+  ) => {
     if (!text.trim() || isTyping) return;
+
+    // Special case: Meal plan requests count as real interaction even if quick action
+    const isMealPlanRequest =
+      specialRequest === "weekly-diet-plan" ||
+      specialRequest === "meal_plan" ||
+      text.toLowerCase().includes("thực đơn") ||
+      text.toLowerCase().includes("meal plan");
+
+    // Mark real interaction logic:
+    // - Manual typing: Always real interaction (isQuickAction = false)
+    // - Quick actions: Only meal plans count as real interaction
+    if (setRealInteraction) {
+      const isRealInteraction = !isQuickAction || isMealPlanRequest;
+      setRealInteraction(isRealInteraction);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -260,7 +334,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       // Chuẩn bị conversation history (loại bỏ default message)
       const conversationHistory = messages
-        .filter((msg) => msg.id !== defaultMessage.id) // Loại bỏ default message
+        .filter((msg) => msg.id !== DEFAULT_MESSAGE.id) // Loại bỏ default message
         .map((msg) => ({
           role: msg.isUser ? "user" : "assistant",
           content: msg.text,
@@ -283,10 +357,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           specialRequest,
           userProfile, // Gửi kèm thông tin user
           conversationHistory, // Gửi kèm lịch sử cuộc trò chuyện đã lọc
+          userId: user?.uid, // Add user ID for subscription checking
+          userEmail: user?.email, // Add user email for subscription setup
         }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use the text as error
+          errorMessage = errorText || errorMessage;
+        }
+
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
+
+      // Check if user hit their daily limit
+      if (data.error === "LIMIT_EXCEEDED") {
+        const limitMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.message || "Bạn đã đạt giới hạn sử dụng của gói Free.",
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, limitMessage]);
+        return; // Don't continue processing
+      }
 
       if (data.error) {
         throw new Error(data.error);
@@ -301,10 +404,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("=== CHAT ERROR ===");
+      console.error("Error type:", typeof error);
+      console.error("Error details:", error);
+
+      let errorText = "❌ Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.";
+
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        if (error.message.includes("Failed to fetch")) {
+          errorText =
+            "❌ Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+        } else if (error.message.includes("HTTP 500")) {
+          errorText = "❌ Lỗi server. Vui lòng thử lại sau ít phút.";
+        }
+      }
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "❌ Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.",
+        text: errorText,
         isUser: false,
         timestamp: new Date(),
       };
@@ -316,7 +434,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(inputText);
+    sendMessage(inputText, undefined, false); // Manual typing is real interaction
   };
 
   const quickActions = [
@@ -497,7 +615,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           dạng PDF
                         </span>
                       </div>
-                      <PDFExporter nutritionContent={message.text} />
+                      <div className="flex flex-wrap gap-2">
+                        <DocumentExporter
+                          nutritionContent={message.text}
+                          userProfile={userProfile}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -530,59 +653,165 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
-      {/* Quick Actions */}
-      {messages.length === 1 && (
-        <div className="pb-4">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {quickActions.map((action, index) => (
-                <motion.button
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  onClick={() =>
-                    sendMessage(action.text, action.specialRequest)
-                  }
-                  className={`p-4 rounded-xl bg-gradient-to-r ${action.color} text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border border-white/20`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <action.icon className="w-6 h-6 flex-shrink-0" />
-                    <span className="text-sm font-medium text-left">
-                      {action.text}
-                    </span>
-                  </div>
-                </motion.button>
-              ))}
+      {/* Quick Actions - Only show for active users */}
+      {messages.length === 1 &&
+        hasAccess &&
+        trialStatus?.status === "active" && (
+          <div className="pb-4">
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {quickActions.map((action, index) => (
+                  <motion.button
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + index * 0.1 }}
+                    onClick={
+                      () =>
+                        sendMessage(action.text, action.specialRequest, true) // Quick action flag
+                    }
+                    className={`p-4 rounded-xl bg-gradient-to-r ${action.color} text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border border-white/20`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <action.icon className="w-6 h-6 flex-shrink-0" />
+                      <span className="text-sm font-medium text-left">
+                        {action.text}
+                      </span>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
             </div>
+          </div>
+        )}
+
+      {/* Message Input - Conditional based on access */}
+      {hasAccess ? (
+        <div className="border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-4">
+          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+            <div className="relative flex items-center">
+              {/* Tools Button - Only visible when user has full access (not on trial or restricted) */}
+              {hasAccess && trialStatus?.status === "active" && (
+                <div className="relative" ref={toolsDropdownRef}>
+                  <motion.button
+                    type="button"
+                    onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="mr-3 p-3 bg-gradient-to-r from-blue-400 to-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border border-blue-300/30 flex items-center space-x-2"
+                  >
+                    <PlusIcon className="w-5 h-5" />
+                    <ChevronDownIcon
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        showToolsDropdown ? "rotate-180" : ""
+                      }`}
+                    />
+                  </motion.button>
+
+                  {/* Tools Dropdown */}
+                  <AnimatePresence>
+                    {showToolsDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute bottom-full mb-2 left-0 bg-white rounded-xl shadow-2xl border border-gray-200/50 p-2 min-w-[320px] backdrop-blur-sm"
+                      >
+                        <div className="text-xs text-gray-500 px-3 py-2 font-medium border-b border-gray-100 mb-2">
+                          🛠️ Công cụ AI
+                        </div>
+                        <div className="space-y-1">
+                          {quickActions.map((action, index) => (
+                            <motion.button
+                              key={index}
+                              onClick={() => {
+                                sendMessage(
+                                  action.text,
+                                  action.specialRequest,
+                                  true
+                                );
+                                setShowToolsDropdown(false);
+                              }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              className={`w-full p-3 rounded-lg bg-gradient-to-r ${action.color} text-white shadow-md hover:shadow-lg transition-all duration-200 border border-white/20 text-left`}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <action.icon className="w-5 h-5 flex-shrink-0" />
+                                <span className="text-sm font-medium">
+                                  {action.text}
+                                </span>
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="💬 Nhập tin nhắn của bạn..."
+                className="flex-1 px-6 py-4 bg-transparent border border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-transparent transition-all duration-200 text-gray-800 placeholder-gray-500"
+                disabled={isTyping}
+              />
+              <motion.button
+                type="submit"
+                disabled={!inputText.trim() || isTyping}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="absolute right-2 p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 border border-blue-400/20"
+              >
+                <PaperAirplaneIcon className="w-5 h-5" />
+              </motion.button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        // Access Denied Message when user has no access
+        <div className="border-t border-gray-200/50 bg-gradient-to-r from-red-50 to-orange-50 backdrop-blur-sm p-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/90 rounded-2xl p-6 shadow-xl border border-red-200/50"
+            >
+              <div className="text-6xl mb-4">🔒</div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Quyền Truy Cập Bị Hạn Chế
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {isLoading
+                  ? "⏳ Đang kiểm tra trạng thái tài khoản..."
+                  : trialStatus.message ||
+                    "Tài khoản của bạn chưa được kích hoạt hoặc đã hết hạn."}
+              </p>
+              {trialStatus.status === "pending_activation" && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200/50">
+                  <p className="text-sm text-blue-700 font-medium">
+                    💝 <strong>Không lo lắng!</strong> Kelly sẽ kích hoạt tài
+                    khoản của bạn trong thời gian sớm nhất. Vui lòng kiên nhẫn
+                    chờ đợi thông báo qua email hoặc kiểm tra lại sau.
+                  </p>
+                </div>
+              )}
+              {trialStatus.status === "expired" && (
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200/50">
+                  <p className="text-sm text-orange-700 font-medium">
+                    ⏰ <strong>Subscription đã hết hạn!</strong> Vui lòng liên
+                    hệ Kelly để gia hạn và tiếp tục sử dụng dịch vụ.
+                  </p>
+                </div>
+              )}
+            </motion.div>
           </div>
         </div>
       )}
-
-      {/* Message Input */}
-      <div className="border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="relative flex items-center">
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="💬 Nhập tin nhắn của bạn..."
-              className="flex-1 px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-800 placeholder-gray-500"
-              disabled={isTyping}
-            />
-            <motion.button
-              type="submit"
-              disabled={!inputText.trim() || isTyping}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="absolute right-2 p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 border border-blue-400/20"
-            >
-              <PaperAirplaneIcon className="w-5 h-5" />
-            </motion.button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 };

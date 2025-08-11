@@ -17,8 +17,21 @@ export const metadata: Metadata = {
   description:
     "Ứng dụng AI chuyên về thể hình, dinh dưỡng và lối sống lành mạnh",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon-16.svg", sizes: "16x16", type: "image/svg+xml" },
+      { url: "/favicon.svg", sizes: "32x32", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.svg",
   },
+  manifest: "/manifest.json",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#4F46E5",
 };
 
 export default function RootLayout({

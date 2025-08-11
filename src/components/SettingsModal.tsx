@@ -3,6 +3,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirestoreSync } from "@/hooks/useFirestoreSync";
+import { useUserSubscriptionOptimized } from "@/hooks/useUserSubscriptionOptimized";
+import { useUserProfileSync } from "@/hooks/useUserProfileSync";
+import {
+  calculateBMR,
+  calculateTDEE,
+  calculateMacroTargets,
+  getGoalDescription,
+  getMacroExplanation,
+} from "@/lib/macroCalculator";
 import {
   XMarkIcon,
   UserIcon,
@@ -14,16 +23,6 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-
-interface UserProfile {
-  name: string;
-  age: number;
-  gender: "male" | "female" | "";
-  height: number; // cm
-  weight: number; // kg
-  activityLevel: string;
-  goal: string;
-}
 
 interface AIPersonality {
   id: string;
@@ -38,15 +37,19 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: "",
-    age: 0,
-    gender: "",
-    height: 0,
-    weight: 0,
-    activityLevel: "moderate",
-    goal: "general_health",
-  });
+  // Use the profile sync hook as primary data source
+  const {
+    profile: userProfile,
+    isLoading: profileSyncLoading,
+    error: profileSyncError,
+    updateProfile,
+    refreshProfile,
+    lastSyncTime,
+  } = useUserProfileSync();
+
+  // Use subscription hook for subscription info only
+  const { profile: subscriptionInfo, loading: subscriptionLoading } =
+    useUserSubscriptionOptimized();
 
   const [selectedPersonality, setSelectedPersonality] =
     useState<string>("friendly");
@@ -57,9 +60,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     isAuthenticated,
     isSyncing,
     syncError,
-    lastSyncTime,
+    lastSyncTime: firestoreSyncTime,
     syncProfileToFirestore,
   } = useFirestoreSync();
+
+  // Initialize personality from profile
+  useEffect(() => {
+    if (userProfile?.personality) {
+      setSelectedPersonality(userProfile.personality);
+    }
+  }, [userProfile?.personality]);
+
+  // Add function to clear subscription cache
+  const clearSubscriptionCache = () => {
+    if (user) {
+      localStorage.removeItem(`user_subscription_cache_${user.uid}`);
+      refreshSubscription?.();
+    }
+  };
+
+  // Refresh profile when modal opens
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      console.log("🔄 Settings modal opened, refreshing profile...");
+      refreshProfile();
+    }
+  }, [isOpen, isAuthenticated, refreshProfile]);
 
   const aiPersonalities: AIPersonality[] = [
     {
@@ -100,31 +126,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     },
   ];
 
-  // Load saved settings from localStorage
+  // Load saved personality from localStorage
   useEffect(() => {
-    const savedProfile = localStorage.getItem("fitchat_user_profile");
     const savedPersonality = localStorage.getItem("fitchat_ai_personality");
-
-    if (savedProfile) {
-      try {
-        setUserProfile(JSON.parse(savedProfile));
-      } catch (error) {
-        console.error("Error loading user profile:", error);
-      }
-    }
-
     if (savedPersonality) {
       setSelectedPersonality(savedPersonality);
     }
   }, []);
 
   const handleSave = async () => {
+    console.log("💾 Saving profile and settings...");
+
     // Get previous personality to check if it changed
     const prevPersonality = localStorage.getItem("fitchat_ai_personality");
 
-    // Save to localStorage first
-    localStorage.setItem("fitchat_user_profile", JSON.stringify(userProfile));
+    // Save personality to localStorage
     localStorage.setItem("fitchat_ai_personality", selectedPersonality);
+
+    // Update profile with current form data including personality
+    const updatedProfile = {
+      ...userProfile,
+      personality: selectedPersonality,
+    };
+
+    // Save profile using the sync hook
+    const profileSaveSuccess = await updateProfile(updatedProfile);
+
+    // Also sync to Firestore if authenticated
+    if (isAuthenticated) {
+      try {
+        await syncProfileToFirestore();
+        console.log("☁️ Profile synced to Firestore");
+      } catch (error) {
+        console.error("❌ Failed to sync to Firestore:", error);
+      }
+    }
 
     // Check if personality changed and show appropriate message
     if (prevPersonality && prevPersonality !== selectedPersonality) {
@@ -172,17 +208,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       setPersonalityChangeMessage("");
     }
 
-    // Sync to Firestore if user is authenticated
-    if (isAuthenticated) {
-      const success = await syncProfileToFirestore(userProfile);
-      if (!success) {
-        // Show error but don't prevent close
-        console.error("Failed to sync to Firestore, but saved locally");
-      }
+    // Show success message based on profile save result
+    if (profileSaveSuccess) {
+      setSaveSuccess(true);
+    } else if (profileSyncError) {
+      // Profile saved locally but not synced to server
+      setSaveSuccess(true);
+      console.log("Profile saved locally, sync to server failed");
     }
-
-    // Show success message
-    setSaveSuccess(true);
 
     // Notify other components about the update
     window.dispatchEvent(new CustomEvent("fitchat-profile-updated"));
@@ -195,46 +228,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     }, 2000);
   };
 
-  const calculateBMR = (): number => {
-    if (
-      !userProfile.weight ||
-      !userProfile.height ||
-      !userProfile.age ||
-      !userProfile.gender
-    ) {
-      return 0;
-    }
-
-    // Mifflin-St Jeor Equation
-    let bmr;
-    if (userProfile.gender === "male") {
-      bmr =
-        10 * userProfile.weight +
-        6.25 * userProfile.height -
-        5 * userProfile.age +
-        5;
-    } else {
-      bmr =
-        10 * userProfile.weight +
-        6.25 * userProfile.height -
-        5 * userProfile.age -
-        161;
-    }
-    return Math.round(bmr);
+  const calculateBMRLocal = (): number => {
+    return calculateBMR(userProfile);
   };
 
-  const calculateTDEE = (): number => {
-    const bmr = calculateBMR();
-    const activityMultipliers: { [key: string]: number } = {
-      sedentary: 1.2,
-      light: 1.375,
-      moderate: 1.55,
-      active: 1.725,
-      very_active: 1.9,
-    };
-    return Math.round(
-      bmr * (activityMultipliers[userProfile.activityLevel] || 1.55)
-    );
+  const calculateTDEELocal = (): number => {
+    return calculateTDEE(userProfile);
   };
 
   if (!isOpen) return null;
@@ -247,6 +246,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+          data-testid="settings-modal"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4 text-white">
@@ -268,11 +268,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       <>
                         <ExclamationTriangleIcon className="w-4 h-4 text-yellow-300" />
                         <span className="text-xs">Lỗi sync</span>
-                      </>
-                    ) : lastSyncTime ? (
-                      <>
-                        <CheckCircleIcon className="w-4 h-4 text-green-300" />
-                        <span className="text-xs">Đã đồng bộ</span>
                       </>
                     ) : null}
                   </div>
@@ -301,13 +296,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   <h3 className="text-lg font-semibold text-gray-800">
                     👤 Thông tin cá nhân
                   </h3>
-                  {isAuthenticated && (
-                    <div className="ml-auto">
-                      <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                        🔄 Tự động lưu cloud
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -321,13 +309,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       type="text"
                       value={userProfile.name}
                       onChange={(e) =>
-                        setUserProfile({
-                          ...userProfile,
+                        updateProfile({
                           name: e.target.value,
                         })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                       placeholder="Nhập tên của bạn"
+                      data-testid="name-input"
                     />
                   </div>
 
@@ -341,8 +329,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       type="number"
                       value={userProfile.age || ""}
                       onChange={(e) =>
-                        setUserProfile({
-                          ...userProfile,
+                        updateProfile({
                           age: parseInt(e.target.value) || 0,
                         })
                       }
@@ -350,6 +337,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       placeholder="Nhập tuổi"
                       min="1"
                       max="120"
+                      data-testid="age-input"
                     />
                   </div>
 
@@ -365,8 +353,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           value="male"
                           checked={userProfile.gender === "male"}
                           onChange={(e) =>
-                            setUserProfile({
-                              ...userProfile,
+                            updateProfile({
                               gender: e.target.value as "male" | "female",
                             })
                           }
@@ -380,8 +367,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           value="female"
                           checked={userProfile.gender === "female"}
                           onChange={(e) =>
-                            setUserProfile({
-                              ...userProfile,
+                            updateProfile({
                               gender: e.target.value as "male" | "female",
                             })
                           }
@@ -401,8 +387,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       type="number"
                       value={userProfile.height || ""}
                       onChange={(e) =>
-                        setUserProfile({
-                          ...userProfile,
+                        updateProfile({
                           height: parseInt(e.target.value) || 0,
                         })
                       }
@@ -423,8 +408,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       type="number"
                       value={userProfile.weight || ""}
                       onChange={(e) =>
-                        setUserProfile({
-                          ...userProfile,
+                        updateProfile({
                           weight: parseFloat(e.target.value) || 0,
                         })
                       }
@@ -444,8 +428,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     <select
                       value={userProfile.activityLevel}
                       onChange={(e) =>
-                        setUserProfile({
-                          ...userProfile,
+                        updateProfile({
                           activityLevel: e.target.value,
                         })
                       }
@@ -475,23 +458,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     <select
                       value={userProfile.goal}
                       onChange={(e) =>
-                        setUserProfile({
-                          ...userProfile,
+                        updateProfile({
                           goal: e.target.value,
                         })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
-                      <option value="lose_weight">⬇️ Giảm cân</option>
-                      <option value="gain_muscle">💪 Tăng cơ</option>
+                      <option value="lose_weight">📉 Giảm cân - giảm mỡ</option>
+                      <option value="gain_muscle">💪 Tăng cân - tăng cơ</option>
                       <option value="maintain_weight">
-                        ⚖️ Duy trì cân nặng
+                        ⚖️ Duy trì vóc dáng
                       </option>
-                      <option value="general_health">
-                        ❤️ Cải thiện sức khỏe tổng quát
-                      </option>
-                      <option value="endurance">🏃 Tăng sức bền</option>
-                      <option value="strength">🏋️ Tăng sức mạnh</option>
                     </select>
                   </div>
                 </div>
@@ -509,18 +486,252 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         <div>
                           <span className="text-gray-600">BMR:</span>
                           <span className="ml-2 font-medium text-green-600">
-                            {calculateBMR()} kcal/ngày
+                            {calculateBMRLocal()} kcal/ngày
                           </span>
                         </div>
                         <div>
                           <span className="text-gray-600">TDEE:</span>
                           <span className="ml-2 font-medium text-purple-600">
-                            {calculateTDEE()} kcal/ngày
+                            {calculateTDEELocal()} kcal/ngày
                           </span>
                         </div>
+                        {userProfile.goal && (
+                          <>
+                            <div className="mt-3 pt-3 border-t border-blue-200">
+                              <h5 className="font-semibold text-gray-800 mb-2">
+                                🎯 Mục tiêu macro (
+                                {getGoalDescription(userProfile.goal)})
+                              </h5>
+                              {(() => {
+                                const macros =
+                                  calculateMacroTargets(userProfile);
+                                return (
+                                  <div className="space-y-2 text-sm">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <span className="text-gray-600">
+                                          Calories:
+                                        </span>
+                                        <span className="ml-2 font-medium text-blue-600">
+                                          {macros.calories} kcal
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-600">
+                                          Protein:
+                                        </span>
+                                        <span className="ml-2 font-medium text-red-600">
+                                          {macros.protein}g (
+                                          {macros.proteinPercent}%)
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-600">
+                                          Carbs:
+                                        </span>
+                                        <span className="ml-2 font-medium text-orange-600">
+                                          {macros.carbs}g ({macros.carbsPercent}
+                                          %)
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-600">
+                                          Fat:
+                                        </span>
+                                        <span className="ml-2 font-medium text-yellow-600">
+                                          {macros.fat}g ({macros.fatPercent}%)
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-2 p-2 bg-blue-50 rounded">
+                                      💡 {getMacroExplanation(userProfile.goal)}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
+
+                {/* Subscription Info Section */}
+                {subscriptionInfo && (
+                  <div className="bg-gradient-to-r from-emerald-50 to-blue-50 p-4 rounded-lg border border-emerald-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <h4 className="font-semibold text-gray-800">
+                          Thông tin tài khoản
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-sm">
+                      <div className="grid grid-cols-1 gap-3">
+                        {/* Plan Type */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Gói tài khoản:</span>
+                          <span className="font-medium text-lg text-gray-900">
+                            {subscriptionInfo?.planDisplay || "Đang tải..."}
+                          </span>
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Trạng thái:</span>
+                          <span
+                            className={`font-medium px-2 py-1 rounded text-xs ${
+                              subscriptionInfo?.isActive
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {subscriptionInfo?.isActive
+                              ? "✅ Hoạt động"
+                              : "❌ Không hoạt động"}
+                          </span>
+                        </div>
+
+                        {/* Account Created */}
+                        {subscriptionInfo?.accountCreatedDate && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">
+                              Ngày tạo tài khoản:
+                            </span>
+                            <span className="font-medium text-gray-800">
+                              {new Date(
+                                subscriptionInfo.accountCreatedDate
+                              ).toLocaleDateString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Trial Period */}
+                        {subscriptionInfo?.isTrialActive &&
+                          subscriptionInfo?.trialEndDate && (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">
+                                  Dùng thử đến:
+                                </span>
+                                <span className="font-medium text-orange-700">
+                                  {new Date(
+                                    subscriptionInfo.trialEndDate
+                                  ).toLocaleDateString("vi-VN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                              </div>
+                              {subscriptionInfo?.daysRemaining !==
+                                undefined && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-gray-600">
+                                    Số ngày còn lại:
+                                  </span>
+                                  <span
+                                    className={`font-medium ${
+                                      subscriptionInfo?.daysRemaining <= 1
+                                        ? "text-red-600"
+                                        : subscriptionInfo?.daysRemaining <= 3
+                                        ? "text-orange-600"
+                                        : "text-green-600"
+                                    }`}
+                                  >
+                                    {subscriptionInfo?.daysRemaining} ngày
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                        {/* Pro Subscription */}
+                        {subscriptionInfo?.isProActive && (
+                          <>
+                            {subscriptionInfo?.subscriptionStartDate && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">
+                                  Bắt đầu gói Pro:
+                                </span>
+                                <span className="font-medium text-purple-700">
+                                  {new Date(
+                                    subscriptionInfo.subscriptionStartDate
+                                  ).toLocaleDateString("vi-VN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                              </div>
+                            )}
+                            {subscriptionInfo?.subscriptionEndDate && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">
+                                  Kết thúc gói Pro:
+                                </span>
+                                <span className="font-medium text-purple-700">
+                                  {new Date(
+                                    subscriptionInfo.subscriptionEndDate
+                                  ).toLocaleDateString("vi-VN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                              </div>
+                            )}
+                            {subscriptionInfo?.daysRemaining !== undefined &&
+                              subscriptionInfo?.daysRemaining > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-gray-600">
+                                    Số ngày còn lại:
+                                  </span>
+                                  <span
+                                    className={`font-medium ${
+                                      subscriptionInfo?.daysRemaining <= 7
+                                        ? "text-red-600"
+                                        : subscriptionInfo?.daysRemaining <= 30
+                                        ? "text-orange-600"
+                                        : "text-green-600"
+                                    }`}
+                                  >
+                                    {subscriptionInfo?.daysRemaining} ngày
+                                  </span>
+                                </div>
+                              )}
+                          </>
+                        )}
+
+                        {/* Status Message */}
+                        <div className="mt-3 pt-3 border-t border-emerald-200"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback when subscription info is not available */}
+                {!subscriptionInfo && (
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-gray-800">
+                        Thông tin tài khoản
+                      </h4>
+                    </div>
+                    <div className="text-center py-4">
+                      <p className="text-gray-500">
+                        {subscriptionLoading
+                          ? "⏳ Đang tải thông tin tài khoản..."
+                          : "❌ Không thể tải thông tin tài khoản"}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* AI Personality Section */}
@@ -595,6 +806,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
                 }`}
+                data-testid="save-button"
               >
                 {isSyncing ? (
                   <>

@@ -1,0 +1,43 @@
+# Vercel ignore patterns
+
+# Firebase
+
+firebase.json
+.firebaserc
+firebase-service-account.json
+functions/
+
+# Scripts
+
+scripts/
+
+# Tests
+
+tests/
+test-results/
+playwright-report/
+e2e-test-helpers.js
+
+# Documentation
+
+\*.md
+!README.md
+
+# Environment
+
+.env.local
+.env.development
+.env.production
+
+# Build artifacts
+
+.next/
+out/
+
+# Dependencies
+
+node_modules/
+
+# TypeScript
+
+\*.tsbuildinfo

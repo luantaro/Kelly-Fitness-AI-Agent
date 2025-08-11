@@ -31,53 +31,42 @@ export default function PaymentPage() {
   const plans: PricingPlan[] = [
     {
       id: "free",
-      name: "Miễn phí",
+      name: "Gói Free",
       price: 0,
       period: "mãi mãi",
-      description: "Bắt đầu với các tính năng cơ bản",
+      description: "Trải nghiệm Kelly AI với giới hạn hợp lý",
       features: [
-        "10 tin nhắn chat/ngày",
-        "Tư vấn dinh dưỡng cơ bản",
-        "Theo dõi cân nặng",
-        "Cộng đồng hỗ trợ",
+        "🤖 Tư vấn dinh dưỡng chuyên nghiệp (5 câu hỏi/ngày)",
+        "📋 Lập thực đơn cá nhân hóa 7 ngày (1 lần/tuần)",
+        "🧮 Tính toán macro và calories chính xác (giới hạn)",
+        "🍎 Tư vấn chế độ ăn theo mục tiêu (cơ bản)",
+        "📊 Phân tích thể trạng thông minh (giới hạn)",
+        "💡 Tư vấn lối sống lành mạnh (cơ bản)",
+        "🎯 6 cá tính AI đa dạng (giới hạn 2 cá tính)",
+        "📱 Tính năng tiện ích (export 1 file/ngày)",
       ],
       color: "from-pastel-sage to-pastel-mint",
     },
     {
       id: "pro",
-      name: "Professional",
+      name: "Gói Pro",
       price: billingCycle === "monthly" ? 299000 : 2990000,
       period: billingCycle === "monthly" ? "/tháng" : "/năm",
-      description: "Dành cho người nghiêm túc với fitness",
+      description: "Sử dụng không giới hạn tất cả tính năng Kelly AI",
       features: [
-        "Chat không giới hạn",
-        "Kế hoạch tập luyện cá nhân hóa",
-        "Phân tích dinh dưỡng chi tiết",
-        "Theo dõi tiến độ nâng cao",
-        "Tư vấn từ chuyên gia",
-        "Thực đơn theo mục tiêu",
-        "Nhắc nhở thông minh",
+        "🤖 Tư vấn dinh dưỡng chuyên nghiệp (KHÔNG GIỚI HẠN)",
+        "📋 Lập thực đơn cá nhân hóa 7 ngày (KHÔNG GIỚI HẠN)",
+        "🧮 Tính toán macro và calories chính xác (KHÔNG GIỚI HẠN)",
+        "🍎 Tư vấn chế độ ăn theo mục tiêu (KHÔNG GIỚI HẠN)",
+        "📊 Phân tích thể trạng thông minh (KHÔNG GIỚI HẠN)",
+        "💡 Tư vấn lối sống lành mạnh (KHÔNG GIỚI HẠN)",
+        "🎯 6 cá tính AI đa dạng (TẤT CẢ 6 CÁ TÍNH)",
+        "📱 Tính năng tiện ích (export KHÔNG GIỚI HẠN)",
+        "⚡ Ưu tiên phản hồi nhanh",
+        "🔧 Truy cập sớm tính năng mới",
       ],
       popular: true,
       color: "from-pastel-lavender to-pastel-sky",
-    },
-    {
-      id: "premium",
-      name: "Premium",
-      price: billingCycle === "monthly" ? 499000 : 4990000,
-      period: billingCycle === "monthly" ? "/tháng" : "/năm",
-      description: "Trải nghiệm cao cấp với AI tốt nhất",
-      features: [
-        "Tất cả tính năng Pro",
-        "AI Coach 24/7",
-        "Phân tích video form tập",
-        "Kế hoạch meal prep",
-        "Tích hợp thiết bị wearable",
-        "Báo cáo sức khỏe định kỳ",
-        "Ưu tiên hỗ trợ",
-        "Truy cập beta features",
-      ],
-      color: "from-pastel-violet to-pastel-rose",
     },
   ];
 
@@ -100,7 +89,7 @@ export default function PaymentPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl font-bold text-gray-800 mb-4"
           >
-            Chọn gói phù hợp với bạn
+            Chọn gói Kelly AI phù hợp với bạn
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -108,7 +97,8 @@ export default function PaymentPage() {
             transition={{ delay: 0.1 }}
             className="text-xl text-gray-600 mb-8"
           >
-            Bắt đầu hành trình fitness với trợ lý AI thông minh
+            Cùng tính năng, khác biệt ở giới hạn sử dụng. Nâng cấp Pro để trải
+            nghiệm không giới hạn!
           </motion.p>
 
           {/* Billing Toggle */}
@@ -145,7 +135,7 @@ export default function PaymentPage() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-5xl mx-auto">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.id}
@@ -185,9 +175,6 @@ export default function PaymentPage() {
                     )}
                     {plan.id === "pro" && (
                       <BoltIcon className="w-8 h-8 text-gray-700" />
-                    )}
-                    {plan.id === "premium" && (
-                      <StarIcon className="w-8 h-8 text-gray-700" />
                     )}
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800 mb-2">
@@ -310,7 +297,7 @@ export default function PaymentPage() {
           </motion.div>
         )}
 
-        {/* Features Comparison */}
+        {/* Why Choose Us */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

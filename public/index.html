@@ -1,0 +1,143 @@
+<!DOCTYPE ht <link rel="icon" href="/favicon.ico">
+<script src="/emergency-admin-fix.js"></script>
+l>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Kelly Fitness - AI Agent | Trợ lý thể hình & dinh dưỡng thông minh
+    </title>
+    <meta
+      name="description"
+      content="Ứng dụng AI chuyên về thể hình, dinh dưỡng và lối sống lành mạnh"
+    />
+    <link rel="icon" href="/favicon.ico" />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+      }
+      .logo {
+        font-size: 48px;
+        margin-bottom: 20px;
+      }
+      .title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        line-height: 1.6;
+      }
+      .status {
+        background: #e8f5e8;
+        color: #2d7d32;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-weight: 500;
+      }
+      .btn {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        margin: 10px;
+        transition: transform 0.2s;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+      .features {
+        text-align: left;
+        margin-top: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+      }
+      .features h3 {
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .features ul {
+        list-style: none;
+        padding: 0;
+      }
+      .features li {
+        padding: 5px 0;
+        color: #666;
+      }
+      .features li:before {
+        content: "✅ ";
+        margin-right: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">💪🤖</div>
+      <h1 class="title">Kelly Fitness - AI Agent</h1>
+      <p class="subtitle">Trợ lý thể hình & dinh dưỡng thông minh</p>
+
+      <div class="status">
+        🎉 Phiên bản mới đã được cập nhật với user data sync hoàn toàn ổn định!
+      </div>
+
+      <a href="/auth/login" class="btn">🚀 Bắt đầu ngay</a>
+      <a href="/admin" class="btn">👑 Admin Dashboard</a>
+
+      <div class="features">
+        <h3>🆕 Cập nhật mới:</h3>
+        <ul>
+          <li>Đã sửa lỗi "Failed to fetch" hoàn toàn</li>
+          <li>Giao diện Settings sạch sẽ hơn</li>
+          <li>Sync data real-time ổn định</li>
+          <li>Performance được tối ưu</li>
+          <li>Admin permissions cải thiện</li>
+          <li>Error handling mạnh mẽ hơn</li>
+        </ul>
+      </div>
+
+      <p style="margin-top: 30px; color: #999; font-size: 14px">
+        Version: August 11, 2025 - Deploy #Latest
+      </p>
+    </div>
+
+    <script>
+      // Auto redirect to app after 3 seconds
+      setTimeout(() => {
+        if (
+          window.location.pathname === "/" ||
+          window.location.pathname === "/index.html"
+        ) {
+          window.location.href = "/auth/login";
+        }
+      }, 3000);
+    </script>
+  </body>
+</html>

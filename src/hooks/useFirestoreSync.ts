@@ -15,7 +15,7 @@ export function useFirestoreSync() {
     if (user && !user.isAnonymous && !loading) {
       handleInitialSync();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [user, loading]);
 
   // Initial sync when user logs in

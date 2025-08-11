@@ -13,6 +13,7 @@ export function useChatHistory() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionSaved, setSessionSaved] = useState(false); // Track if current session is saved
+  const [hasRealInteraction, setHasRealInteraction] = useState(false); // Track if user has real interaction
   const [sessionId, setSessionId] = useState<string>(() => {
     // Tạo session ID unique cho mỗi instance của hook
     const id = `session_${Date.now()}_${Math.random()
@@ -41,7 +42,6 @@ export function useChatHistory() {
       console.log("❌ No authenticated user, clearing chat histories");
       setChatHistories([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Tải danh sách lịch sử trò chuyện
@@ -131,6 +131,7 @@ export function useChatHistory() {
     console.log("🆕 Starting new chat session");
     setCurrentChatId(null);
     setSessionSaved(false); // Reset session saved flag
+    setHasRealInteraction(false); // Reset interaction flag
     // Tạo session ID mới cho cuộc trò chuyện mới
     const newSessionId = `session_${Date.now()}_${Math.random()
       .toString(36)
@@ -147,6 +148,7 @@ export function useChatHistory() {
       if (chat) {
         setCurrentChatId(chatId);
         setSessionSaved(true); // Existing chat is already saved
+        setHasRealInteraction(true); // Existing chat has interactions
         // Khi tải chat cũ, sử dụng chatId làm sessionId để tránh tạo duplicate
         setSessionId(chatId);
         console.log("✅ Loaded chat successfully, session set to:", chatId);
@@ -174,14 +176,23 @@ export function useChatHistory() {
     // 2. Có ít nhất 2 tin nhắn (1 user + 1 AI)
     // 3. Chưa có currentChatId (tức là cuộc trò chuyện mới)
     // 4. Session chưa từng được lưu (để tránh duplicate)
+    // 5. User có tương tác thực (không chỉ quick action)
     if (
       !user ||
       user.isAnonymous ||
       messages.length < 2 ||
       currentChatId ||
-      sessionSaved
+      sessionSaved ||
+      !hasRealInteraction
     ) {
-      console.log("❌ Save skipped - conditions not met");
+      console.log("❌ Save skipped - conditions not met:", {
+        noUser: !user,
+        isAnonymous: user?.isAnonymous,
+        notEnoughMessages: messages.length < 2,
+        hasCurrentChatId: !!currentChatId,
+        alreadySaved: sessionSaved,
+        noRealInteraction: !hasRealInteraction,
+      });
       return;
     }
 
@@ -229,11 +240,30 @@ export function useChatHistory() {
     }
   };
 
+  // Đánh dấu user có tương tác thực
+  const setRealInteraction = (hasRealInteraction: boolean) => {
+    if (hasRealInteraction) {
+      console.log("✅ Marking real user interaction");
+      setHasRealInteraction(true);
+    } else {
+      console.log("⚡ Quick action - not marking as real interaction");
+    }
+  };
+
+  // Reset interaction state when starting new chat
+  const resetInteractionState = () => {
+    console.log("🔄 Resetting interaction state");
+    setHasRealInteraction(false);
+    setSessionSaved(false);
+  };
+
   return {
     chatHistories,
+    setChatHistories,
     currentChatId,
     sessionId,
     isLoading,
+    hasRealInteraction,
     loadChatHistories,
     saveChatHistory,
     updateChatHistory,
@@ -243,5 +273,7 @@ export function useChatHistory() {
     loadChat,
     saveChatWhenNeeded,
     updateCurrentChat,
+    setRealInteraction,
+    resetInteractionState,
   };
 }
