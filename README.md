@@ -1,4 +1,4 @@
-# Kelly Fitness - AI Agent | Trợ lý Sức khỏe Thông minh
+# 1FItness AI | AI Fitness Assistant
 
 Một ứng dụng web hiện đại được xây dựng với Next.js, TypeScript và Tailwind CSS, cung cấp trợ lý AI chuyên về fitness, dinh dưỡng và sức khỏe với giao diện chuyên nghiệp theo phong cách ChatGPT và Gemini.
 
@@ -202,10 +202,10 @@ Dự án này được phân phối dưới MIT License. Xem file `LICENSE` đ�
 
 ## 📞 Liên hệ
 
-- **Developer**: Kelly Fitness - AI Agent Team
-- **Email**: support@fitchat.ai
-- **Website**: [https://fitchat.ai](https://fitchat.ai)
+- **Developer**: 1FItness AI Development Team
+- **Email**: support@1fitness.ai
+- **Website**: [https://1fitness.ai](https://1fitness.ai)
 
 ---
 
-Made with ❤️ by Kelly Fitness - AI Agent Team
+Made with ❤️ by 1FItness AI Team

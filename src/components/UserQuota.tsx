@@ -78,7 +78,7 @@ export default function UserQuota({ onUpgradeClick }: UserQuotaProps) {
         <div className="flex items-center space-x-3">
           <SparklesIcon className="h-6 w-6" />
           <div>
-            <h3 className="font-bold">Kelly Pro</h3>
+            <h3 className="font-bold">OneFitness Pro</h3>
             <p className="text-sm opacity-90">Trải nghiệm không giới hạn</p>
           </div>
         </div>

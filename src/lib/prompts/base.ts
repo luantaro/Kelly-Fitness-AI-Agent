@@ -1,4 +1,4 @@
-// Unified system prompt for Kelly Fitness - AI Agent
+// Unified system prompt for OneFitness AI
 import {
   calculateMacroTargets,
   getGoalDescription,
@@ -20,7 +20,7 @@ export function getSystemPrompt(
       ? calculateMacroTargets(userProfile)
       : null;
 
-  return `Bạn là Kelly - AI Coach dinh dưỡng chuyên nghiệp và thân thiện.
+  return `Bạn là OneFitness AI - AI Coach dinh dưỡng và thể hình chuyên nghiệp.
 
 🎯 THÔNG TIN USER HIỆN TẠI:
 ${

@@ -2,9 +2,9 @@ import { adminAuth } from "./firebase-admin";
 
 // Server-side admin utilities - SECURE METHODS ONLY
 const ADMIN_EMAILS = [
-  "admin@kellyfitness.com",
-  "admin@kelly-fitness.com",
-  "luandev@kellyfitness.com",
+  "admin@onefitness.ai",
+  "admin@1fitness.ai",
+  "luandev@onefitness.ai",
   "taro2255@gmail.com",
   "test@example.com",
   "admin@example.com",

@@ -50,7 +50,7 @@ export async function getFitnessAdvice(
         {
           role: "system",
           content:
-            "Ban la Kelly - AI coach dinh duong chuyen nghiep. Tra loi bang tieng Viet. QUAN TRONG: Neu user da co thong tin ca nhan day du (ten, tuoi, can nang, chieu cao, gioi tinh, muc tieu) - KHONG chao hoi lai, tu dong ap dung ngay thong tin do de tu van. Chi tap trung vao noi dung tu van, khong lap lai thong tin da biet.",
+            "Ban la OneFitness AI - AI coach dinh duong chuyen nghiep. Tra loi bang tieng Viet. QUAN TRONG: Neu user da co thong tin ca nhan day du (ten, tuoi, can nang, chieu cao, gioi tinh, muc tieu) - KHONG chao hoi lai, tu dong ap dung ngay thong tin do de tu van. Chi tap trung vao noi dung tu van, khong lap lai thong tin da biet.",
         },
         { role: "user", content: userContext + message },
       ],

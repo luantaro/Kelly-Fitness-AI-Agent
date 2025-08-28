@@ -145,7 +145,7 @@ export async function checkUserAccess(
         return {
           hasAccess: true,
           status: "active",
-          message: "✅ Tài khoản đã được kích hoạt bởi Kelly",
+          message: "✅ Tài khoản đã được kích hoạt bởi 1FItness AI",
         };
       } else {
         // Subscription expired
@@ -159,7 +159,7 @@ export async function checkUserAccess(
           hasAccess: false,
           status: "expired",
           message:
-            "❌ Subscription đã hết hạn. Vui lòng liên hệ Kelly để gia hạn.",
+            "❌ Subscription đã hết hạn. Vui lòng liên hệ 1FItness AI để gia hạn.",
         };
       }
     }
@@ -215,7 +215,7 @@ export async function checkUserAccess(
           hasAccess: false,
           status: "pending_activation",
           message:
-            "⏰ Thời gian dùng thử đã kết thúc. Tài khoản sẽ được Kelly kích hoạt trong thời gian sớm nhất. Vui lòng chờ thông báo!",
+            "⏰ Thời gian dùng thử đã kết thúc. Tài khoản sẽ được 1FItness AI kích hoạt trong thời gian sớm nhất. Vui lòng chờ thông báo!",
         };
       }
     }
@@ -225,7 +225,7 @@ export async function checkUserAccess(
       hasAccess: false,
       status: "pending_activation",
       message:
-        "❌ Tài khoản chưa được kích hoạt. Vui lòng chờ Kelly kích hoạt.",
+        "❌ Tài khoản chưa được kích hoạt. Vui lòng chờ 1FItness AI kích hoạt.",
     };
   } catch (error) {
     console.error("Error checking user access:", error);

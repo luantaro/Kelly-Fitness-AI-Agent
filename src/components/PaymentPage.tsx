@@ -34,7 +34,7 @@ export default function PaymentPage() {
       name: "Gói Free",
       price: 0,
       period: "mãi mãi",
-      description: "Trải nghiệm Kelly AI với giới hạn hợp lý",
+      description: "Trải nghiệm OneFitness AI với giới hạn hợp lý",
       features: [
         "🤖 Tư vấn dinh dưỡng chuyên nghiệp (5 câu hỏi/ngày)",
         "📋 Lập thực đơn cá nhân hóa 7 ngày (1 lần/tuần)",
@@ -52,7 +52,7 @@ export default function PaymentPage() {
       name: "Gói Pro",
       price: billingCycle === "monthly" ? 299000 : 2990000,
       period: billingCycle === "monthly" ? "/tháng" : "/năm",
-      description: "Sử dụng không giới hạn tất cả tính năng Kelly AI",
+      description: "Sử dụng không giới hạn tất cả tính năng OneFitness AI",
       features: [
         "🤖 Tư vấn dinh dưỡng chuyên nghiệp (KHÔNG GIỚI HẠN)",
         "📋 Lập thực đơn cá nhân hóa 7 ngày (KHÔNG GIỚI HẠN)",

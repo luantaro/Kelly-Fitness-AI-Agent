@@ -9,7 +9,7 @@ const firebaseAdminConfig = {
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
   }),
-  projectId: process.env.FIREBASE_PROJECT_ID || "kelly-fitness-93e58",
+  projectId: process.env.FIREBASE_PROJECT_ID || "stproject-a8c88",
 };
 
 // Initialize the app

@@ -744,7 +744,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <p className="text-gray-600 text-sm mb-4">
-                  Chọn cách bạn muốn Kelly Fitness - AI Agent tương tác với bạn:
+                  Chọn cách bạn muốn OneFitness AI tương tác với bạn:
                 </p>
 
                 <div className="space-y-3">
